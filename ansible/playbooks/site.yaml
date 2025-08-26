@@ -1,0 +1,7 @@
+- name: Prepare kubernetes mono node
+  hosts: all
+  become: yes
+  roles:
+    - prepare_server
+    - install_kubernetes 
+    - bootstrap_cluster 

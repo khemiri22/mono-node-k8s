@@ -1,0 +1,6 @@
+---
+- name: Restart kubelet to apply new node IP
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes

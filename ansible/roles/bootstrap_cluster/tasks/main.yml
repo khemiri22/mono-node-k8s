@@ -1,0 +1,152 @@
+---
+- name: Init k8s cluster
+  ansible.builtin.command: >
+    kubeadm init 
+      --pod-network-cidr=10.10.0.0/16
+      --service-cidr=10.100.0.0/16
+      --apiserver-advertise-address={{ mono_ip }}
+  args:
+    creates: /etc/kubernetes/admin.conf
+  register: kubeadm_init
+
+- name: Set Kubelet node IP
+  ansible.builtin.lineinfile:
+    path: /var/lib/kubelet/kubeadm-flags.env
+    regexp: '(^KUBELET_KUBEADM_ARGS=.*)"'
+    line: '\1 --node-ip={{ mono_ip }}"'
+    backrefs: yes
+  notify: Restart kubelet to apply new node IP
+
+# Run notified handlers immediately
+- name: Run notified handlers immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure .kube directory exists
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy kubeconfig to user home
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    remote_src: yes
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Remove control-plane taint from all nodes # To allow scheduling of pods on control-plane nodes
+  ansible.builtin.shell: |
+    kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+    kubectl taint nodes --all node-role.kubernetes.io/master- || true
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# # Setup cilium CNI
+# - name: Get latest Cilium CLI version
+#   ansible.builtin.uri:
+#     url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
+#     return_content: yes
+#   register: cilium_version
+
+# - name: Set Cilium CLI architecture
+#   ansible.builtin.set_fact:
+#     cilium_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+# - name: Download Cilium CLI binary
+#   ansible.builtin.get_url:
+#     url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_version.content | trim }}/cilium-linux-{{ cilium_arch }}.tar.gz"
+#     dest: "/tmp/cilium-linux-{{ cilium_arch }}.tar.gz"
+#     mode: '0644'
+
+# - name: Download Cilium CLI checksum
+#   ansible.builtin.get_url:
+#     url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_version.content | trim }}/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum"
+#     dest: "/tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum"
+#     mode: '0644'
+
+# - name: Install sha256sum
+#   ansible.builtin.dnf:
+#     name: coreutils
+#     state: present
+
+# - name: Verify checksum
+#   ansible.builtin.command: >
+#     sha256sum --check /tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum
+#   args:
+#     chdir: /tmp   
+#   register: checksum_result
+#   failed_when: "'OK' not in checksum_result.stdout"
+
+# - name: Extract Cilium CLI to /usr/local/bin
+#   ansible.builtin.unarchive:
+#     src: /tmp/cilium-linux-{{ cilium_arch }}.tar.gz
+#     dest: /usr/local/bin
+#     remote_src: yes
+#     mode: '0755'
+
+# - name: Cleanup downloaded files
+#   ansible.builtin.file:
+#     path: "{{ item }}"
+#     state: absent
+#   loop:
+#     - /tmp/cilium-linux-{{ cilium_arch }}.tar.gz
+#     - /tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum
+
+# - name: Install the CNI on the cluster
+#   ansible.builtin.command: >
+#    /usr/local/bin/cilium install 
+#       --set ipam.operator.clusterPoolIPv4PodCIDRList=10.10.0.0/16
+#   environment:
+#     KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Setup Calico CNI
+- name: Download Calico manifest 
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.5/manifests/calico.yaml
+    dest: /tmp/calico.yaml
+    mode: '0644'
+
+- name: Uncomment CALICO_IPV4POOL_CIDR (- name line)
+  ansible.builtin.replace:
+    path: /tmp/calico.yaml
+    regexp: '^(\s*)#\s- name: CALICO_IPV4POOL_CIDR'
+    replace: '\1- name: CALICO_IPV4POOL_CIDR'
+
+- name: Uncomment CALICO_IPV4POOL_CIDR (value) and change CIDR from "192.168.0.0/16" to "10.10.0.0/16"
+  ansible.builtin.replace:
+    path: /tmp/calico.yaml
+    regexp: '^(\s*)#\s(\s{2})value: "192.168.0.0/16"'
+    replace: '\1\2value: "10.10.0.0/16"'
+
+- name: Apply Calico manifest with IPIP change
+  ansible.builtin.command: >
+    kubectl apply -f /tmp/calico.yaml
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Install Local Path Provisioner
+- name: Install Local Path Provisioner
+  ansible.builtin.command: >
+    kubectl apply -f 
+      https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+- name: Set local-path as default storage class
+  ansible.builtin.command: >
+    kubectl patch storageclass local-path 
+      -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Copy kubeconfig to local machine
+- name: Fetch kubeconfig to local machine
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf    # remote path
+    dest: ~/kubeconfig                 # local path relative to your playbook
+    flat: yes
+

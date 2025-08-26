@@ -1,0 +1,54 @@
+---
+- name: Install dependencies
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+    state: present
+    update_cache: yes
+- name: Add Kubernetes repository
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/kubernetes.repo
+    content: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key
+    owner: root
+    group: root
+    mode: '0644'
+- name: Install kubelet and kubeadm
+  ansible.builtin.dnf:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+    disable_excludes: kubernetes
+    update_cache: yes
+  notify: Restart kubelet
+
+# Run notified handlers immediately
+- name: Run notified handlers immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Install dnf versionlock plugin
+  ansible.builtin.dnf:
+    name: python3-dnf-plugin-versionlock
+    state: present
+
+- name: Hold kubelet and kubeadm versions
+  ansible.builtin.command: >
+    dnf versionlock add kubelet kubeadm
+  args:
+    creates: /etc/dnf/plugins/versionlock.list
+
+- name: Enable kubelet service
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: yes
+    state: started

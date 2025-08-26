@@ -1,0 +1,82 @@
+---
+# Disable swap
+- name: Disable swap immediately
+  ansible.builtin.command: swapoff -a
+
+- name: Remove swap file
+  ansible.builtin.file:  
+    path: /swap.img
+    state: absent
+
+- name: Remove swap entry from /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '.*swap.*'
+    replace: ''
+
+# Enable IP forwarding
+- name: Enable IPv4 forwarding in sysctl
+  ansible.builtin.sysctl:  
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
+
+# Install required DNF plugins
+- name: Install dnf-plugins-core
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+    update_cache: yes
+
+# Add Docker CE repo (for containerd)
+- name: Add Docker CE repository
+  ansible.builtin.command: >
+    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+
+# Install containerd
+- name: Install containerd
+  ansible.builtin.dnf:
+    name: containerd.io
+    state: present
+    update_cache: yes
+
+# Create containerd config directory
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+# Generate default containerd config
+- name: Generate default containerd config
+  ansible.builtin.command: containerd config default
+  register: containerd_default_config
+
+# Write containerd config file
+- name: Write containerd config
+  ansible.builtin.copy:
+    content: "{{ containerd_default_config.stdout }}"
+    dest: /etc/containerd/config.toml
+
+# Enable systemd cgroup
+- name: Enable systemd cgroup in containerd
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  notify: Restart containerd
+
+# Run notified handlers immediately
+- name: Run notified handlers immediately
+  ansible.builtin.meta: flush_handlers
+
+# Add hosts entries to nodes
+- name: Add hosts entries
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+    state: present
+  loop: "{{ hosts_entries }}"
