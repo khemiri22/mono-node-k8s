@@ -19,7 +19,7 @@ Before running Ansible, set up passwordless SSH access from the control node to 
    ./setup-ssh.sh -H <TARGET-HOST-IP> -U <SSH-CONNECTION-USER>
    ```
 
-   This script generates an SSH key pair and configures the SSH config to access host with at \<TARGET-HOST-IP\> using the user \<SSH-CONNECTION-USER\>, setting the target node hostname as `mono`. After running the script, copy the generated public key (`.pub`) to the target node's `~/.ssh/authorized_keys`.
+   This script generates an SSH key pair and configures the SSH config to access host with at `<TARGET-HOST-IP>` using the user `<SSH-CONNECTION-USER>`, setting the target node hostname as `mono`. After running the script, copy the generated public key (`.pub`) to the target node's `~/.ssh/authorized_keys`.
 
 2. **Verify SSH access from the control node to the target node**
    ```bash
