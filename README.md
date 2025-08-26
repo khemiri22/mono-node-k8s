@@ -75,7 +75,9 @@ The Nginx application service is configured as a `NodePort` service exposed on p
   <img src="images/nginx-running.png" alt="Nginx running" width="100%" style="border: 1px solid #000; border-radius: 5px;">
 </div>
 
+## 📄 License
 
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 
 
