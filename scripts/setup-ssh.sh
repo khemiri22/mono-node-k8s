@@ -3,7 +3,7 @@
 # Usage: ./setup-ssh.sh -U <SSH_USER> -H <HOST_IP>
 
 # Enable strict error handling
-set -euo pipefail
+# set -euo pipefail
 
 # === Variables ===
 KEY_TYPE="ed25519"
