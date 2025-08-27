@@ -5,7 +5,7 @@ Automate the deployment of a single node Kubernetes cluster using Ansible (Cento
 ## 🛠️ Prerequisites
 
 - Control node: Centos Stream 9.
-- Target node: Centos Stream 9.
+- Target node: Centos Stream 9 (Minimum 2 CPUs and 2GB RAM).
 - User with passwordless sudo privileges on the target node.
 
 ## 🔑 SSH Setup
@@ -40,6 +40,9 @@ Before running Ansible, set up passwordless SSH access from the control node to 
 - Prepares the target node for installing kubernetes components (based on the official Kubernetes documentation).
 - Install Kubeadm, Kubelet and containerd on the target node.
 - Initialize the single-node cluster and sets the Container network interface (CNI) **Calico**.
+- Preinstalled and configured StorageClass for dynamic storage provisioning (using local storage).
+- Preinstalled and configured Ingress NGINX Controller that accepts traffic on ports 80 (HTTP) and 443 (HTTPS), accessible via the node IP address.
+  
 
 ## 🚀 Usage
 
