@@ -1,3 +1,4 @@
 Vagrantfile
 .vagrant
 scripts/tmp
+NOTE.txt

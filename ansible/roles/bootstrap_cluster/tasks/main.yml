@@ -45,64 +45,6 @@
   environment:
     KUBECONFIG: /home/{{ ansible_user }}/.kube/config
 
-# # Setup cilium CNI
-# - name: Get latest Cilium CLI version
-#   ansible.builtin.uri:
-#     url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
-#     return_content: yes
-#   register: cilium_version
-
-# - name: Set Cilium CLI architecture
-#   ansible.builtin.set_fact:
-#     cilium_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
-
-# - name: Download Cilium CLI binary
-#   ansible.builtin.get_url:
-#     url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_version.content | trim }}/cilium-linux-{{ cilium_arch }}.tar.gz"
-#     dest: "/tmp/cilium-linux-{{ cilium_arch }}.tar.gz"
-#     mode: '0644'
-
-# - name: Download Cilium CLI checksum
-#   ansible.builtin.get_url:
-#     url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_version.content | trim }}/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum"
-#     dest: "/tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum"
-#     mode: '0644'
-
-# - name: Install sha256sum
-#   ansible.builtin.dnf:
-#     name: coreutils
-#     state: present
-
-# - name: Verify checksum
-#   ansible.builtin.command: >
-#     sha256sum --check /tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum
-#   args:
-#     chdir: /tmp   
-#   register: checksum_result
-#   failed_when: "'OK' not in checksum_result.stdout"
-
-# - name: Extract Cilium CLI to /usr/local/bin
-#   ansible.builtin.unarchive:
-#     src: /tmp/cilium-linux-{{ cilium_arch }}.tar.gz
-#     dest: /usr/local/bin
-#     remote_src: yes
-#     mode: '0755'
-
-# - name: Cleanup downloaded files
-#   ansible.builtin.file:
-#     path: "{{ item }}"
-#     state: absent
-#   loop:
-#     - /tmp/cilium-linux-{{ cilium_arch }}.tar.gz
-#     - /tmp/cilium-linux-{{ cilium_arch }}.tar.gz.sha256sum
-
-# - name: Install the CNI on the cluster
-#   ansible.builtin.command: >
-#    /usr/local/bin/cilium install 
-#       --set ipam.operator.clusterPoolIPv4PodCIDRList=10.10.0.0/16
-#   environment:
-#     KUBECONFIG: /home/{{ ansible_user }}/.kube/config
-
 # Setup Calico CNI
 - name: Download Calico manifest 
   ansible.builtin.get_url:
@@ -140,6 +82,42 @@
   ansible.builtin.command: >
     kubectl patch storageclass local-path 
       -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Install Ingress-Nginx 
+- name: Install Ingress-Nginx
+  ansible.builtin.command: >
+    kubectl apply -f 
+      https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.1/deploy/static/provider/baremetal/deploy.yaml
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Make ingress nginx the default ingress class
+- name: Make ingress nginx the default ingress class
+  ansible.builtin.command: >
+    kubectl patch ingressclass nginx 
+      -p '{"metadata": {"annotations": {"ingressclass.kubernetes.io/is-default-class": "true"}}}'
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Make ingress-nginx-service a ClusterIP service
+- name: Make ingress-nginx-service a ClusterIP service
+  ansible.builtin.command: >
+    kubectl patch svc ingress-nginx-controller -n ingress-nginx 
+      -p '{"spec": {"type": "ClusterIP", "ports": [{"port": 80, "targetPort": 80}, {"port": 443, "targetPort": 443}]}}'
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+
+# Add hostPort to ingress-nginx-controller pod template
+- name: Add hostPort to ingress-nginx-controller pod template
+  ansible.builtin.command: >
+    kubectl patch deployment ingress-nginx-controller -n ingress-nginx 
+      --type='json' 
+      -p='[
+        {"op": "add", "path": "/spec/template/spec/containers/0/ports/0/hostPort", "value": 80},
+        {"op": "add", "path": "/spec/template/spec/containers/0/ports/1/hostPort", "value": 443}
+      ]'
   environment:
     KUBECONFIG: /home/{{ ansible_user }}/.kube/config
 
