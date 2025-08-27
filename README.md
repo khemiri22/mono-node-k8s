@@ -68,11 +68,15 @@ Before running Ansible, set up passwordless SSH access from the control node to 
 
 After the setup is finished, the kubeconfig file will be located in the home directory of the user running the Ansible playbook, under `~/kubeconfig`, you can copy it to your local machine, control machine or any machine where you want to interact with the cluster using kubectl or helm.
 
-We also deployed a test Nginx application on the cluster by applying the deployment and service manifests located under `nginx-app/`:
+We also deployed a test Nginx application on the cluster by applying the deployment, service and ingress manifests located under `nginx-app/`:
    ```bash
    kubectl apply -f nginx-app/
    ```
-The Nginx application service is configured as a `NodePort` service exposed on port `30080`. You can access it in a browser or via curl to verify that it is running.
+The Nginx application is configured to be accessible in a browser using the hostname `app.kube.local`. To enable this, update the `/etc/hosts` file on your local machine by adding the following entry:
+   ```lua
+   <TARGET-HOST-IP> app.kube.local
+   ```
+After updating the hosts file, you can open a browser and navigate to `http://app.kube.local` to access the application.
 
 <div align="center">
   <img src="images/nginx-running.png" alt="Nginx running" width="100%" style="border: 1px solid #000; border-radius: 5px;">
