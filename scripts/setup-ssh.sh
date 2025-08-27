@@ -45,7 +45,7 @@ chmod 700 "$KEY_DIR"
 # === Generate SSH key if it doesn't exist ===
 if [ ! -f "$KEY_PATH" ]; then
   echo "[*] Generating SSH key..."
-  ssh-keygen -t "$KEY_TYPE" -C "$KEY_COMMENT" -f "$KEY_PATH" -N ""
+  ssh-keygen -q -t "$KEY_TYPE" -C "$KEY_COMMENT" -f "$KEY_PATH" -N ""
   echo "[+] Key generated: $KEY_PATH"
 else
   echo "[*] SSH key already exists: $KEY_PATH"
