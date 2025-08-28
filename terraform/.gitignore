@@ -4,6 +4,8 @@
 # Secret files
 secrets.tfvars
 secrets.tfvars.json
+certs.tfvars
+certs.tfvars.json
 
 # Terraform state files
 terraform.tfstate

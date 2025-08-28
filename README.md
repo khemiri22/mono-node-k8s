@@ -72,11 +72,22 @@ We also deployed a test Nginx application on the cluster by applying the deploym
    ```bash
    kubectl apply -f nginx-app/
    ```
+Alternatively, you can deploy the application using Terraform with the Kubernetes provider by applying the configuration located in the `./terraform` folder:
+   ```bash
+   cd ./terraform
+   terraform init
+   terraform plan
+   terraform apply --auto-approve
+   ```
+**Note**: When deploying the Nginx application via Terraform, TLS is enabled by default. You need to provide your TLS certificate and key path in the `terraform.tfvars` file to bind with the variables declared in the root `variables.tf`.
+
 The Nginx application is configured to be accessible in a browser using the hostname `app.kube.local`. To enable this, update the `/etc/hosts` file on your local machine by adding the following entry:
    ```lua
    <TARGET-HOST-IP> app.kube.local
    ```
-After updating the hosts file, you can open a browser and navigate to `http://app.kube.local` to access the application.
+After updating the hosts file, you can open a browser and navigate to `https://app.kube.local` to access the application.
+* **If you deployed using** `kubectl`: TLS is **not enabled by default**, so the application will be accessible over plain HTTP (`http://app.kube.local`).
+* **If you deployed using Terraform**: TLS is enabled by default if you provide your certificate and key in the `terraform.tfvars` file, so the application will be accessible via HTTPS (`https://app.kube.local`).
 
 <div align="center">
   <img src="images/nginx-running.png" alt="Nginx running" width="100%" style="border: 1px solid #000; border-radius: 5px;">

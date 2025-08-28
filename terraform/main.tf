@@ -13,7 +13,7 @@ module "ingress" {
 module "secret" {
   source = "./modules/secret"
   tls_certs = {
-    "tls.crt" = filebase64("${path.root}/certs/tls-cert.pem")
-    "tls.key" = filebase64("${path.root}/certs/tls-key.pem")
+    "tls.crt" = filebase64("${var.tls_path.tls-cert}")
+    "tls.key" = filebase64("${var.tls_path.tls-key}")
   }
 }

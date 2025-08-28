@@ -7,3 +7,11 @@ variable "kube_context" {
   description = "Kubernetes context to use"
   type        = string
 }
+
+variable "tls_path" {
+  description = "Path to TLS certificates"
+  type = object({
+    tls-cert = string
+    tls-key  = string
+  })
+}
