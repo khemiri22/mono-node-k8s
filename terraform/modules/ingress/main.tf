@@ -4,12 +4,8 @@ resource "kubernetes_ingress_v1" "nginx_app_ingress" {
     namespace = var.ingress_namespace
     annotations = {
       "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-      # Security headers
       "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
       "nginx.ingress.kubernetes.io/ssl-passthrough"    = "false"
-      "nginx.ingress.kubernetes.io/proxy-body-size"    = "10m"
-      "nginx.ingress.kubernetes.io/proxy-buffer-size"  = "128k"
-      "nginx.ingress.kubernetes.io/rewrite-target"     = "/"
     }
   }
 
