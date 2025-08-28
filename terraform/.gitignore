@@ -9,7 +9,7 @@ secrets.tfvars.json
 terraform.tfstate
 terraform.tfstate.backup
 
-#
+# Certs and keys
 *.pem
 *.crt
 *.key
